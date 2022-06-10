@@ -1,6 +1,8 @@
 use io::{stdin, stdout};
 use std::io;
-use std::io::{Read, Write};
+use std::io::Write;
+
+const MAX_TRIES: i32 = 5;
 
 fn main() -> io::Result<()> {
     let word = pick_word();
@@ -9,10 +11,26 @@ fn main() -> io::Result<()> {
 }
 
 fn game_loop(word: &String) {
+    let mut revealed: Vec<u8> = vec![b'_'; word.len()];
+    let mut tries_left = MAX_TRIES;
     loop {
-        let entered = match prompt() {
+        print_revealed(&revealed);
+        match prompt() {
             Ok(v) => {
-                v
+                match reveal(v, &mut revealed, &word) {
+                    left if left == 0 => {
+                        println!("You Won!");
+                        return;
+                    },
+                    left => {
+                        tries_left = tries_left - 1;
+                        if tries_left == 0 {
+                            println!("You lost!");
+                            return;
+                        }
+                        println!("{} letters left. You have {} more tries.", left, tries_left);
+                    }
+                }
             }
             Err(err) => {
                 println!("err '{}'", err);
@@ -20,6 +38,29 @@ fn game_loop(word: &String) {
             }
         };
     }
+}
+
+fn reveal(letter: u8, revealed: &mut Vec<u8>, word: &String) -> i32 {
+    let word_bytes = word.as_bytes();
+    let mut left = 0;
+    for i in 0..word.len() {
+        if word_bytes[i] == letter {
+            revealed[i] = letter;
+        }
+        if revealed[i] == b'_' {
+            left = left + 1
+        }
+    }
+    left
+}
+
+fn print_revealed(revealed: &Vec<u8>) {
+    println!();
+    for c in revealed.iter() {
+        print!("{} ", *c as char)
+    }
+    println!();
+    println!();
 }
 
 fn pick_word() -> String {
