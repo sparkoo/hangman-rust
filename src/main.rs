@@ -87,7 +87,7 @@ fn pick_word() -> String {
     }
 }
 
-fn prompt<'a>() -> Result<u8, String> {
+fn prompt() -> Result<u8, String> {
     print!("Enter letter: ");
     stdout().flush().unwrap();
 
