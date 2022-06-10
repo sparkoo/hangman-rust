@@ -95,7 +95,7 @@ fn prompt<'a>() -> Result<u8, String> {
     return match stdin().read_line(&mut buffer) {
         Ok(n) => {
             match buffer.as_bytes() {
-                b if b.len() <= 1 || (b[1] != 10 && b[1] != 13) => { // second character must be \b on linux or \v on windows
+                b if n <= 1 || (b[1] != 10 && b[1] != 13) => { // second character must be \b on linux or \v on windows
                     Err("enter single letter".to_string())
                 },
                 b => {
