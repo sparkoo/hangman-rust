@@ -1,6 +1,8 @@
 use io::{stdin, stdout};
+use std::fs::File;
 use std::io;
-use std::io::Write;
+use std::io::{BufRead, BufReader, Write};
+use rand::seq::SliceRandom;
 
 const MAX_TRIES: i32 = 5;
 
@@ -18,17 +20,20 @@ fn game_loop(word: &String) {
         match prompt() {
             Ok(v) => {
                 match reveal(v, &mut revealed, &word) {
-                    left if left == 0 => {
-                        println!("You Won!");
+                    (_, l) if l == 0 => {
+                        println!("You Won! '{}'", word);
                         return;
                     },
-                    left => {
-                        tries_left = tries_left - 1;
+                    (g, l) => {
+                        if g == 0 {
+                            tries_left = tries_left - 1;
+                        }
                         if tries_left == 0 {
-                            println!("You lost!");
+                            println!("You lost! Word was '{}'", word);
                             return;
                         }
-                        println!("{} letters left. You have {} more tries.", left, tries_left);
+                        println!("You hit {} letters, {} letters left.", g, l);
+                        println!("You have {} more tries!", tries_left);
                     }
                 }
             }
@@ -40,18 +45,20 @@ fn game_loop(word: &String) {
     }
 }
 
-fn reveal(letter: u8, revealed: &mut Vec<u8>, word: &String) -> i32 {
+fn reveal(letter: u8, revealed: &mut Vec<u8>, word: &String) -> (i32, i32) {
     let word_bytes = word.as_bytes();
     let mut left = 0;
+    let mut guessed = 0;
     for i in 0..word.len() {
         if word_bytes[i] == letter {
+            guessed = guessed + 1;
             revealed[i] = letter;
         }
         if revealed[i] == b'_' {
             left = left + 1
         }
     }
-    left
+    (guessed, left)
 }
 
 fn print_revealed(revealed: &Vec<u8>) {
@@ -64,7 +71,20 @@ fn print_revealed(revealed: &Vec<u8>) {
 }
 
 fn pick_word() -> String {
-    "blabol".to_string()
+    let filename = "words.txt";
+    let file = File::open(filename).unwrap();
+    let reader = BufReader::new(file);
+
+    let mut words: Vec<String> = vec![];
+    for (_, line) in reader.lines().enumerate() {
+        let line = line.unwrap();
+        words.push(line);
+    }
+
+    match words.choose(&mut rand::thread_rng()) {
+        Some(w) => {w.clone()}
+        None => {"".to_string()}
+    }
 }
 
 fn prompt<'a>() -> Result<u8, String> {
@@ -72,18 +92,22 @@ fn prompt<'a>() -> Result<u8, String> {
     stdout().flush().unwrap();
 
     let mut buffer = String::new();
-    match stdin().read_line(&mut buffer) {
+    return match stdin().read_line(&mut buffer) {
         Ok(n) => {
-            if n != 2 {
-                return Err("enter single letter".to_string());
+            match buffer.as_bytes() {
+                b if b.len() <= 1 || (b[1] != 10 && b[1] != 13) => { // second character must be \b on linux or \v on windows
+                    Err("enter single letter".to_string())
+                },
+                b => {
+                    match b[0] {
+                        l if l >= 97 && l <= 122 => Ok(l),
+                        _ => Err("enter [a-z]".to_string()),
+                    }
+                }
             }
-            return match buffer.as_bytes()[0] {
-                l if l >= 97 && l <= 122 => Ok(l),
-                _ => Err("enter [a-z]".to_string()),
-            };
         }
         Err(n) => {
-            return Err(n.to_string());
+            Err(n.to_string())
         }
     }
 }
